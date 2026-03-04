@@ -79,6 +79,55 @@ app.get('/api/admin/email-status', requireAdmin, (req, res) => {
   res.json({ emailEnabled: email.isEmailEnabled() });
 });
 
+// SMTP connection verify — ทดสอบว่า connect ได้หรือไม่
+app.post('/api/admin/test-smtp', requireAdmin, async (req, res) => {
+  if (!email.isEmailEnabled()) {
+    return res.json({
+      success: false,
+      error: 'SMTP ยังไม่ได้ตั้งค่า (SMTP_HOST / SMTP_USER / SMTP_PASS ว่าง)',
+      config: {
+        host: process.env.SMTP_HOST || '(not set)',
+        port: process.env.SMTP_PORT || '465',
+        secure: process.env.SMTP_SECURE !== 'false' ? 'true (SSL)' : 'false (STARTTLS)',
+        user: process.env.SMTP_USER ? '***configured***' : '(not set)'
+      }
+    });
+  }
+  try {
+    const info = await email.verifyConnection();
+    res.json({ success: true, message: 'SMTP connection OK ✅', info });
+  } catch (err) {
+    console.error('SMTP verify failed:', err);
+    res.json({
+      success: false,
+      error: err.message,
+      code: err.code,
+      config: {
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT || '465',
+        secure: process.env.SMTP_SECURE !== 'false' ? 'true (SSL)' : 'false (STARTTLS)',
+        user: process.env.SMTP_USER ? '***configured***' : '(not set)'
+      }
+    });
+  }
+});
+
+// ส่งอีเมลทดสอบ
+app.post('/api/admin/test-email', requireAdmin, async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'กรุณาระบุอีเมลปลายทาง' });
+  if (!email.isEmailEnabled()) {
+    return res.json({ success: false, error: 'SMTP ยังไม่ได้ตั้งค่า' });
+  }
+  try {
+    const result = await email.sendTestEmail(to);
+    res.json(result);
+  } catch (err) {
+    console.error('Test email failed:', err);
+    res.json({ success: false, error: err.message, code: err.code });
+  }
+});
+
 // ========================
 // API: Cycle Management (Admin)
 // ========================
@@ -152,12 +201,16 @@ app.post('/api/admin/send-passwords', requireAdmin, async (req, res) => {
   if (!cycle) return res.status(400).json({ error: 'ไม่มีรอบการประเมินที่ active' });
 
   const users = db.getUsersByCycle(cycle.id);
+  let sent = 0, failed = 0;
   const results = [];
   for (const user of users) {
+    console.log(`📧 Sending password to ${user.email}...`);
     const result = await email.sendPasswordEmail(user.email, user.password, cycle.cycle_name);
+    if (result.success) sent++; else failed++;
     results.push(result);
   }
-  res.json({ success: true, results });
+  console.log(`📊 Email results: ${sent} sent, ${failed} failed out of ${users.length}`);
+  res.json({ success: true, results, summary: { total: users.length, sent, failed } });
 });
 
 app.post('/api/admin/send-password/:id', requireAdmin, async (req, res) => {

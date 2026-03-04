@@ -18,11 +18,17 @@ function getTransporter() {
 
     transporter = nodemailer.createTransport({
       host: host,
-      port: parseInt(process.env.SMTP_PORT || '465'),
-      secure: process.env.SMTP_SECURE !== 'false',
-      auth: { user, pass }
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',  // true for 465, false for 587
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      ...(process.env.SMTP_SECURE !== 'true' && { requireTLS: true }),
+      tls: { rejectUnauthorized: false }
     });
     emailEnabled = true;
+    console.log(`✅ SMTP configured: ${host}:${process.env.SMTP_PORT || '587'} (secure=${process.env.SMTP_SECURE === 'true'})`);
   }
   return transporter;
 }
@@ -132,9 +138,39 @@ async function sendReportEmail(toEmail, cycleName, reportHtml) {
   }
 }
 
+async function verifyConnection() {
+  const transport = getTransporter();
+  if (!transport) throw new Error('SMTP not configured');
+  return transport.verify();
+}
+
+async function sendTestEmail(toEmail) {
+  const transport = getTransporter();
+  if (!transport) {
+    return { success: false, error: 'SMTP ยังไม่ได้ตั้งค่า', noSmtp: true };
+  }
+  const mailOptions = {
+    from: `"360° Eval Test" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: '[Test] SMTP Connection Test - 360° Evaluation',
+    text: 'อีเมลทดสอบนี้ส่งสำเร็จ SMTP ทำงานปกติ \nThis is a test email from 360° Evaluation System.',
+    html: '<p>✅ <strong>SMTP ทำงานปกติ!</strong></p><p>อีเมลทดสอบนี้ส่งสำเร็จจาก 360° Evaluation System</p>'
+  };
+  try {
+    const info = await transport.sendMail(mailOptions);
+    console.log('✅ Test email sent:', info.messageId);
+    return { success: true, email: toEmail, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Test email failed:', error);
+    return { success: false, email: toEmail, error: error.message, code: error.code };
+  }
+}
+
 module.exports = {
   sendPasswordEmail,
   sendReminderEmail,
   sendReportEmail,
-  isEmailEnabled
+  isEmailEnabled,
+  verifyConnection,
+  sendTestEmail
 };
