@@ -350,6 +350,7 @@
       const ev = evaluatees[currentEvaluateeIdx];
       const key = `${aspectNum}_${questionNum}`;
       allData[ev.id].openended[key] = value;
+      updateTabStatus();
     }
 
     // ========================
