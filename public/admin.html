@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>360° Evaluation - Admin Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Admin Login -->
+  <div id="adminLogin" class="login-container">
+    <div class="login-card">
+      <div class="login-logo"><i class="bi bi-shield-lock"></i></div>
+      <h1>Admin Panel</h1>
+      <p class="subtitle">ระบบจัดการแบบประเมิน 360°</p>
+      <div id="loginAlert" class="alert d-none"></div>
+      <form id="adminLoginForm">
+        <div class="mb-3 text-start">
+          <label class="form-label fw-semibold">อีเมลผู้ดูแล</label>
+          <input type="email" class="form-control form-control-lg" id="adminEmail" value="admin@365holding.co.th" required>
+        </div>
+        <div class="mb-4 text-start">
+          <label class="form-label fw-semibold">รหัสผ่าน</label>
+          <input type="password" class="form-control form-control-lg" id="adminPassword" required>
+        </div>
+        <button type="submit" class="btn btn-primary-custom btn-lg w-100">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" class="d-none">
+    <nav class="navbar navbar-expand-lg navbar-custom">
+      <div class="container-fluid">
+        <span class="navbar-brand">
+          <i class="bi bi-gear-wide-connected me-2"></i>360° Admin Dashboard
+        </span>
+        <div class="d-flex align-items-center gap-2">
+          <a href="/" class="btn btn-outline-light btn-sm">หน้าแรก</a>
+          <button class="btn btn-outline-light btn-sm" onclick="adminLogout()">
+            <i class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid py-4 px-3 px-md-4">
+      <!-- Tabs Navigation -->
+      <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCycle">
+            <i class="bi bi-calendar3 me-1"></i>รอบการประเมิน
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabUsers">
+            <i class="bi bi-people me-1"></i>จัดการผู้ใช้
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabProgress">
+            <i class="bi bi-graph-up me-1"></i>ความคืบหน้า
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabReports">
+            <i class="bi bi-file-earmark-bar-graph me-1"></i>รายงาน
+          </button>
+        </li>
+      </ul>
+
+      <!-- Email Status Banner -->
+      <div id="emailBanner" class="d-none"></div>
+
+      <div class="tab-content">
+        <!-- Tab: Cycle Management -->
+        <div class="tab-pane fade show active" id="tabCycle">
+          <div class="row g-4">
+            <div class="col-lg-6">
+              <div class="card card-custom">
+                <div class="card-header card-header-custom">
+                  <i class="bi bi-plus-circle me-2"></i>สร้างรอบการประเมินใหม่
+                </div>
+                <div class="card-body p-4">
+                  <form id="cycleForm">
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">ชื่อรอบการประเมิน</label>
+                      <input type="text" class="form-control" id="cycleName" placeholder="เช่น Q1/2026, รอบที่ 1/2569" required>
+                    </div>
+                    <div class="row g-3 mb-3">
+                      <div class="col-6">
+                        <label class="form-label fw-semibold">วันเริ่มต้น</label>
+                        <input type="date" class="form-control" id="cycleStart" required>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label fw-semibold">วันสิ้นสุด</label>
+                        <input type="date" class="form-control" id="cycleEnd" required>
+                      </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary-custom w-100">
+                      <i class="bi bi-plus-lg me-1"></i>สร้างรอบการประเมิน
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="card card-custom">
+                <div class="card-header card-header-custom">
+                  <i class="bi bi-clock-history me-2"></i>รอบการประเมินปัจจุบัน
+                </div>
+                <div class="card-body p-4" id="cycleInfo">
+                  <p class="text-muted">กำลังโหลด...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: User Management -->
+        <div class="tab-pane fade" id="tabUsers">
+          <div class="row g-4">
+            <div class="col-lg-5">
+              <div class="card card-custom">
+                <div class="card-header card-header-custom">
+                  <i class="bi bi-person-plus me-2"></i>เพิ่มผู้ประเมิน
+                </div>
+                <div class="card-body p-4">
+                  <form id="addUsersForm">
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">อีเมลผู้ประเมิน</label>
+                      <textarea class="form-control" id="userEmails" rows="6" placeholder="กรอกอีเมล 1 รายการต่อบรรทัด&#10;เช่น:&#10;khala1391@hotmail.com&#10;khala1391@gmail.com&#10;vmcar1391@gmail.com">khala1391@hotmail.com
+khala1391@gmail.com
+vmcar1391@gmail.com</textarea>
+                      <div class="form-text">กรอกอีเมล 1 รายการต่อ 1 บรรทัด</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary-custom w-100 mb-2">
+                      <i class="bi bi-person-plus me-1"></i>เพิ่มผู้ประเมิน
+                    </button>
+                  </form>
+                  <hr>
+                  <div class="d-grid gap-2">
+                    <button class="btn btn-accent" onclick="sendAllPasswords()">
+                      <i class="bi bi-envelope me-1"></i>ส่งรหัสผ่านทั้งหมดทางอีเมล
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="sendReminders()">
+                      <i class="bi bi-bell me-1"></i>ส่งแจ้งเตือนผู้ที่ยังไม่ได้ประเมิน
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-7">
+              <div class="card card-custom">
+                <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-people me-2"></i>รายชื่อผู้ประเมิน</span>
+                  <button class="btn btn-sm btn-outline-light" onclick="loadUsers()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-custom table-hover mb-0">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>อีเมล</th>
+                          <th>รหัสผ่าน</th>
+                          <th>สถานะ</th>
+                          <th>จัดการ</th>
+                        </tr>
+                      </thead>
+                      <tbody id="usersTable">
+                        <tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Progress -->
+        <div class="tab-pane fade" id="tabProgress">
+          <div class="card card-custom">
+            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-graph-up me-2"></i>สถานะการประเมิน</span>
+              <button class="btn btn-sm btn-outline-light" onclick="loadProgress()">
+                <i class="bi bi-arrow-clockwise me-1"></i>รีเฟรช
+              </button>
+            </div>
+            <div class="card-body p-4">
+              <div id="progressSummary" class="mb-4"></div>
+              <div class="table-responsive">
+                <table class="table table-custom table-hover">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>ผู้ประเมิน</th>
+                      <th>อีเมล</th>
+                      <th>สถานะ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="progressTable">
+                    <tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Reports -->
+        <div class="tab-pane fade" id="tabReports">
+          <div class="card card-custom">
+            <div class="card-header card-header-custom">
+              <i class="bi bi-file-earmark-bar-graph me-2"></i>รายงานสรุปผลการประเมิน
+            </div>
+            <div class="card-body p-4">
+              <div id="reportsSummary" class="mb-4"></div>
+              <div class="table-responsive">
+                <table class="table table-custom table-hover">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>ผู้ถูกประเมิน</th>
+                      <th>คะแนนเฉลี่ยรวม</th>
+                      <th>ด้าน EQ</th>
+                      <th>ด้านทีม</th>
+                      <th>ด้านสื่อสาร</th>
+                      <th>ด้านกลยุทธ์</th>
+                      <th>ดูรายงาน</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportsTable">
+                    <tr><td colspan="8" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toastContainer" class="toast-custom"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // ========================
+    // Admin Auth
+    // ========================
+    
+    async function checkAdmin() {
+      const res = await fetch('/api/admin/check');
+      const data = await res.json();
+      if (data.isAdmin) {
+        showDashboard();
+      }
+    }
+
+    function showDashboard() {
+      document.getElementById('adminLogin').classList.add('d-none');
+      document.getElementById('adminDashboard').classList.remove('d-none');
+      loadCycles();
+      loadUsers();
+      loadProgress();
+      loadReports();
+      checkEmailStatus();
+    }
+
+    async function checkEmailStatus() {
+      try {
+        const res = await fetch('/api/admin/email-status');
+        const data = await res.json();
+        const banner = document.getElementById('emailBanner');
+        if (!data.emailEnabled) {
+          banner.className = 'alert alert-warning mb-4';
+          banner.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i><strong>SMTP ยังไม่ได้ตั้งค่า</strong> – ระบบส่งอีเมลถูกปิดอยู่ ดูรหัสผ่านได้ที่แท็บ "จัดการผู้ใช้" หากต้องการเปิดใช้อีเมล ให้ตั้งค่า SMTP ใน Environment Variables ของ Render';
+        } else {
+          banner.className = 'alert alert-success mb-4';
+          banner.innerHTML = '<i class="bi bi-check-circle me-2"></i>ระบบส่งอีเมลพร้อมใช้งาน';
+          setTimeout(() => banner.classList.add('d-none'), 3000);
+        }
+      } catch {}
+    }
+
+    document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alert = document.getElementById('loginAlert');
+      alert.classList.add('d-none');
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('adminEmail').value,
+            password: document.getElementById('adminPassword').value
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showDashboard();
+        } else {
+          alert.className = 'alert alert-danger';
+          alert.textContent = data.error;
+          alert.classList.remove('d-none');
+        }
+      } catch { 
+        alert.className = 'alert alert-danger';
+        alert.textContent = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
+        alert.classList.remove('d-none');
+      }
+    });
+
+    async function adminLogout() {
+      await fetch('/api/admin/logout', { method: 'POST' });
+      location.reload();
+    }
+
+    // ========================
+    // Toast Notification
+    // ========================
+    
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const id = 'toast-' + Date.now();
+      const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : 'bg-warning';
+      container.innerHTML = `
+        <div id="${id}" class="toast show align-items-center text-white ${bgClass} border-0" role="alert">
+          <div class="d-flex">
+            <div class="toast-body">${msg}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+          </div>
+        </div>`;
+      setTimeout(() => { const el = document.getElementById(id); if (el) el.remove(); }, 5000);
+    }
+
+    // ========================
+    // Cycle Management
+    // ========================
+    
+    async function loadCycles() {
+      const res = await fetch('/api/admin/cycles');
+      const data = await res.json();
+      const info = document.getElementById('cycleInfo');
+      
+      if (data.activeCycle) {
+        const c = data.activeCycle;
+        const statusBadge = data.isActive 
+          ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>กำลังดำเนินการ</span>'
+          : '<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>สิ้นสุดแล้ว</span>';
+        
+        info.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h5 class="mb-1 fw-bold">${c.cycle_name}</h5>
+              ${statusBadge}
+            </div>
+          </div>
+          <div class="row g-3 mt-2">
+            <div class="col-6">
+              <div class="bg-light p-3 rounded">
+                <small class="text-muted d-block">วันเริ่มต้น</small>
+                <strong>${c.start_date}</strong>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="bg-light p-3 rounded">
+                <small class="text-muted d-block">วันสิ้นสุด</small>
+                <strong>${c.end_date}</strong>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        info.innerHTML = '<p class="text-muted text-center py-3"><i class="bi bi-info-circle me-2"></i>ยังไม่มีรอบการประเมิน กรุณาสร้างรอบการประเมินใหม่</p>';
+      }
+    }
+
+    document.getElementById('cycleForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const res = await fetch('/api/admin/cycles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cycleName: document.getElementById('cycleName').value,
+            startDate: document.getElementById('cycleStart').value,
+            endDate: document.getElementById('cycleEnd').value
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('สร้างรอบการประเมินสำเร็จ');
+          loadCycles();
+          document.getElementById('cycleForm').reset();
+        } else {
+          showToast(data.error, 'danger');
+        }
+      } catch { showToast('เกิดข้อผิดพลาด', 'danger'); }
+    });
+
+    // ========================
+    // User Management
+    // ========================
+    
+    async function loadUsers() {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      const tbody = document.getElementById('usersTable');
+      
+      if (!data.users || data.users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">ยังไม่มีผู้ประเมิน</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.users.map((u, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${u.email}</strong></td>
+          <td><code>${u.password}</code></td>
+          <td>${u.has_submitted 
+            ? '<span class="badge-submitted"><i class="bi bi-check-circle me-1"></i>ประเมินแล้ว</span>' 
+            : '<span class="badge-pending"><i class="bi bi-hourglass-split me-1"></i>รอดำเนินการ</span>'}</td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" onclick="sendOnePassword(${u.id})" title="ส่งรหัสผ่าน">
+                <i class="bi bi-envelope"></i>
+              </button>
+              <button class="btn btn-outline-warning" onclick="resetPassword(${u.id})" title="รีเซ็ตรหัสผ่าน">
+                <i class="bi bi-key"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="deleteUser(${u.id})" title="ลบ">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('addUsersForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const emailsText = document.getElementById('userEmails').value;
+      const emails = emailsText.split('\n').map(e => e.trim()).filter(e => e);
+      
+      if (emails.length === 0) return showToast('กรุณากรอกอีเมล', 'warning');
+
+      try {
+        const res = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emails })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const added = data.results.filter(r => !r.error).length;
+          const existing = data.results.filter(r => r.error).length;
+          let msg = `เพิ่มผู้ประเมิน ${added} คนสำเร็จ`;
+          if (existing > 0) msg += ` (${existing} คนมีอยู่แล้ว)`;
+          showToast(msg);
+          loadUsers();
+        } else {
+          showToast(data.error, 'danger');
+        }
+      } catch { showToast('เกิดข้อผิดพลาด', 'danger'); }
+    });
+
+    async function sendAllPasswords() {
+      if (!confirm('ต้องการส่งรหัสผ่านไปยังผู้ประเมินทุกคนทางอีเมลใช่หรือไม่?')) return;
+      showToast('กำลังส่งอีเมล... กรุณารอสักครู่', 'warning');
+      try {
+        const res = await fetch('/api/admin/send-passwords', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          const success = data.results.filter(r => r.success).length;
+          const failed = data.results.filter(r => !r.success).length;
+          showToast(`ส่งอีเมลสำเร็จ ${success} ฉบับ` + (failed > 0 ? ` (ล้มเหลว ${failed})` : ''));
+        }
+      } catch { showToast('เกิดข้อผิดพลาดในการส่งอีเมล', 'danger'); }
+    }
+
+    async function sendOnePassword(userId) {
+      showToast('กำลังส่งอีเมล...', 'warning');
+      try {
+        const res = await fetch(`/api/admin/send-password/${userId}`, { method: 'POST' });
+        const data = await res.json();
+        showToast(data.success ? 'ส่งอีเมลสำเร็จ' : `ส่งอีเมลล้มเหลว: ${data.error}`, data.success ? 'success' : 'danger');
+      } catch { showToast('เกิดข้อผิดพลาด', 'danger'); }
+    }
+
+    async function sendReminders() {
+      if (!confirm('ต้องการส่งอีเมลแจ้งเตือนไปยังผู้ที่ยังไม่ได้ประเมินใช่หรือไม่?')) return;
+      showToast('กำลังส่งอีเมลแจ้งเตือน...', 'warning');
+      try {
+        const res = await fetch('/api/admin/send-reminders', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`ส่งแจ้งเตือนไปยัง ${data.count} คนสำเร็จ`);
+        }
+      } catch { showToast('เกิดข้อผิดพลาด', 'danger'); }
+    }
+
+    async function resetPassword(userId) {
+      if (!confirm('ต้องการรีเซ็ตรหัสผ่านและสถานะการประเมินของผู้ใช้นี้ใช่หรือไม่?')) return;
+      try {
+        const res = await fetch(`/api/admin/users/${userId}/reset`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('รีเซ็ตรหัสผ่านสำเร็จ');
+          loadUsers();
+        }
+      } catch { showToast('เกิดข้อผิดพลาด', 'danger'); }
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm('ต้องการลบผู้ประเมินนี้ พร้อมข้อมูลการประเมินทั้งหมดใช่หรือไม่?')) return;
+      try {
+        const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('ลบผู้ประเมินสำเร็จ');
+          loadUsers();
+          loadProgress();
+        }
+      } catch { showToast('เกิดข้อผิดพลาด', 'danger'); }
+    }
+
+    // ========================
+    // Progress
+    // ========================
+    
+    async function loadProgress() {
+      const res = await fetch('/api/admin/progress');
+      const data = await res.json();
+      
+      const summary = document.getElementById('progressSummary');
+      const tbody = document.getElementById('progressTable');
+
+      if (!data.cycle || !data.users || data.users.length === 0) {
+        summary.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">ยังไม่มีข้อมูล</td></tr>';
+        return;
+      }
+
+      const pct = data.total > 0 ? Math.round((data.submitted / data.total) * 100) : 0;
+      summary.innerHTML = `
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="bg-light p-3 rounded text-center">
+              <div class="fs-3 fw-bold text-primary">${data.total}</div>
+              <small class="text-muted">ผู้ประเมินทั้งหมด</small>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="bg-light p-3 rounded text-center">
+              <div class="fs-3 fw-bold text-success">${data.submitted}</div>
+              <small class="text-muted">ประเมินแล้ว</small>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="bg-light p-3 rounded text-center">
+              <div class="fs-3 fw-bold text-warning">${data.total - data.submitted}</div>
+              <small class="text-muted">รอดำเนินการ</small>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="fw-semibold">ความคืบหน้า</small>
+            <small class="fw-semibold">${pct}%</small>
+          </div>
+          <div class="progress-bar-custom">
+            <div class="progress-bar-fill" style="width: ${pct}%"></div>
+          </div>
+        </div>
+      `;
+
+      tbody.innerHTML = data.users.map((u, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${u.display_name || '-'}</td>
+          <td>${u.email}</td>
+          <td>${u.has_submitted 
+            ? '<span class="badge-submitted"><i class="bi bi-check-circle me-1"></i>ประเมินแล้ว</span>' 
+            : '<span class="badge-pending"><i class="bi bi-hourglass-split me-1"></i>รอดำเนินการ</span>'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ========================
+    // Reports
+    // ========================
+
+    async function loadReports() {
+      const res = await fetch('/api/admin/reports');
+      const data = await res.json();
+      const tbody = document.getElementById('reportsTable');
+      const summary = document.getElementById('reportsSummary');
+
+      if (!data.cycle || !data.reports || data.reports.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีข้อมูลรายงาน</td></tr>';
+        summary.innerHTML = '';
+        return;
+      }
+
+      summary.innerHTML = `
+        <div class="bg-light p-3 rounded">
+          <strong>รอบการประเมิน:</strong> ${data.cycle.cycle_name} 
+          &nbsp;|&nbsp; <strong>ช่วงเวลา:</strong> ${data.cycle.start_date} - ${data.cycle.end_date}
+        </div>
+      `;
+
+      function scoreColor(score) {
+        if (score >= 4.5) return 'text-primary fw-bold';
+        if (score >= 3.5) return 'text-success fw-bold';
+        if (score >= 2.5) return 'text-warning fw-bold';
+        return 'text-danger fw-bold';
+      }
+
+      function getTopicScore(topicAverages, topicNum) {
+        const t = topicAverages.find(a => a.topic_number === topicNum);
+        return t ? (Math.round(t.avg_score * 100) / 100).toFixed(2) : '-';
+      }
+
+      tbody.innerHTML = data.reports.map((r, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${r.user.display_name || r.user.email}</strong></td>
+          <td><span class="${scoreColor(r.overallAvg)}">${r.overallAvg.toFixed(2)}</span></td>
+          <td class="${scoreColor(parseFloat(getTopicScore(r.topicAverages, 1)))}">${getTopicScore(r.topicAverages, 1)}</td>
+          <td class="${scoreColor(parseFloat(getTopicScore(r.topicAverages, 2)))}">${getTopicScore(r.topicAverages, 2)}</td>
+          <td class="${scoreColor(parseFloat(getTopicScore(r.topicAverages, 3)))}">${getTopicScore(r.topicAverages, 3)}</td>
+          <td class="${scoreColor(parseFloat(getTopicScore(r.topicAverages, 4)))}">${getTopicScore(r.topicAverages, 4)}</td>
+          <td>
+            <a href="/report/${r.user.id}" class="btn btn-sm btn-primary-custom" target="_blank">
+              <i class="bi bi-eye me-1"></i>ดูรายงาน
+            </a>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ========================
+    // Init
+    // ========================
+    
+    checkAdmin();
+
+    // Auto-refresh progress tab
+    document.querySelector('[data-bs-target="#tabProgress"]').addEventListener('shown.bs.tab', loadProgress);
+    document.querySelector('[data-bs-target="#tabReports"]').addEventListener('shown.bs.tab', loadReports);
+  </script>
+</body>
+</html>

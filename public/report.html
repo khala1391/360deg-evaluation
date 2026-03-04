@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>360° Evaluation Report</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    .score-bar-container { display: flex; align-items: center; gap: 10px; }
+    .score-bar { flex: 1; height: 12px; background: #e0e0e0; border-radius: 6px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s; }
+    .score-value { min-width: 50px; text-align: right; font-weight: 700; font-size: 1.1rem; }
+    .feedback-card { background: #f8f9fa; border-left: 4px solid #1a237e; padding: 12px 16px; margin-bottom: 8px; border-radius: 0 8px 8px 0; }
+    .feedback-label { font-weight: 600; color: #1a237e; font-size: 0.85rem; }
+    .raw-score-chip { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; margin: 2px; }
+  </style>
+</head>
+<body>
+  <!-- Loading -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="text-center">
+      <div class="spinner-custom mb-3"></div>
+      <p class="text-muted">กำลังโหลดรายงาน...</p>
+    </div>
+  </div>
+
+  <!-- Action Buttons (no-print) -->
+  <div class="no-print" style="position:fixed; top:20px; right:20px; z-index:100; display:flex; gap:8px;">
+    <button class="btn btn-primary-custom" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i>พิมพ์
+    </button>
+    <button class="btn btn-accent" onclick="downloadPDF()">
+      <i class="bi bi-file-pdf me-1"></i>ดาวน์โหลด PDF
+    </button>
+    <a href="/admin" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>กลับ Admin
+    </a>
+  </div>
+
+  <!-- Report Content -->
+  <div class="container py-4">
+    <div id="reportContent" class="report-container">
+      <!-- Header -->
+      <div class="report-header">
+        <h1 class="mb-2">360° Executive Evaluation Report</h1>
+        <h3 class="fw-normal text-muted mb-1">รายงานผลการประเมินผู้บริหาร 360 องศา</h3>
+        <div id="reportMeta" class="mt-3"></div>
+      </div>
+
+      <!-- Overall Summary -->
+      <div id="overallSummary" class="mb-4"></div>
+
+      <!-- Topic Scores -->
+      <div id="topicScores"></div>
+
+      <!-- Detailed Subtopic Scores -->
+      <div id="detailedScores" class="mt-4"></div>
+
+      <!-- Open-ended Feedback -->
+      <div id="openendedFeedback" class="mt-4"></div>
+
+      <!-- Raw Data Section -->
+      <div id="rawDataSection" class="mt-4"></div>
+
+      <!-- Footer -->
+      <div class="text-center mt-5 pt-4" style="border-top: 2px solid #e0e0e0;">
+        <p class="text-muted small">
+          เอกสารนี้เป็นความลับ สร้างโดยระบบประเมิน 360° Executive Evaluation System<br>
+          <span id="reportDate"></span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let reportData = null;
+
+    async function loadReport() {
+      // Get userId from URL
+      const pathParts = window.location.pathname.split('/');
+      const userId = pathParts[pathParts.length - 1];
+
+      if (!userId || isNaN(userId)) {
+        document.getElementById('reportContent').innerHTML = '<p class="text-center text-muted py-5">ไม่พบข้อมูลรายงาน</p>';
+        document.getElementById('loadingOverlay').style.display = 'none';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/report/${userId}`);
+        if (!res.ok) {
+          throw new Error('Failed to load report');
+        }
+        reportData = await res.json();
+        renderReport();
+      } catch (err) {
+        document.getElementById('reportContent').innerHTML = '<p class="text-center text-danger py-5">ไม่สามารถโหลดรายงานได้ กรุณาเข้าสู่ระบบ Admin ก่อน</p>';
+      }
+      document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    function getScoreColor(score) {
+      if (score >= 4.5) return '#1a237e';
+      if (score >= 3.5) return '#2e7d32';
+      if (score >= 2.5) return '#f9a825';
+      if (score >= 1.5) return '#e65100';
+      return '#c62828';
+    }
+
+    function getScoreLabel(score) {
+      if (score >= 4.5) return 'โดดเด่นมาก';
+      if (score >= 3.5) return 'เกินความคาดหวัง';
+      if (score >= 2.5) return 'ตามความคาดหวัง';
+      if (score >= 1.5) return 'ต่ำกว่าความคาดหวัง';
+      return 'ต้องปรับปรุง';
+    }
+
+    function getScoreClass(score) {
+      if (score >= 4.5) return 'score-5';
+      if (score >= 3.5) return 'score-4';
+      if (score >= 2.5) return 'score-3';
+      if (score >= 1.5) return 'score-2';
+      return 'score-1';
+    }
+
+    function renderReport() {
+      const { user, cycle, ratings, openEnded, averages, topicAverages, topics, aspects } = reportData;
+
+      // Meta
+      document.getElementById('reportMeta').innerHTML = `
+        <div class="row g-3 justify-content-center">
+          <div class="col-auto">
+            <span class="badge bg-primary px-3 py-2 fs-6">${user.display_name || user.email}</span>
+          </div>
+          <div class="col-auto">
+            <span class="badge bg-secondary px-3 py-2">${cycle.cycle_name}</span>
+          </div>
+          <div class="col-auto">
+            <span class="badge bg-outline-secondary border px-3 py-2">${cycle.start_date} — ${cycle.end_date}</span>
+          </div>
+        </div>
+      `;
+
+      // Overall Summary
+      const overallAvg = topicAverages.length > 0
+        ? topicAverages.reduce((s, t) => s + t.avg_score, 0) / topicAverages.length
+        : 0;
+      const numEvaluators = topicAverages.length > 0 ? topicAverages[0].num_evaluators : 0;
+
+      document.getElementById('overallSummary').innerHTML = `
+        <div class="text-center mb-4">
+          <h4 class="fw-bold mb-3">สรุปคะแนนภาพรวม</h4>
+          <div class="score-circle ${getScoreClass(overallAvg)}" style="width:100px;height:100px;font-size:2rem;">
+            ${overallAvg.toFixed(2)}
+          </div>
+          <div class="mt-2 fw-semibold" style="color:${getScoreColor(overallAvg)}">${getScoreLabel(overallAvg)}</div>
+          <div class="text-muted small mt-1">จากผู้ประเมิน ${numEvaluators} คน</div>
+        </div>
+      `;
+
+      // Topic Scores
+      document.getElementById('topicScores').innerHTML = `
+        <h4 class="fw-bold mb-3"><i class="bi bi-bar-chart me-2"></i>คะแนนรายด้าน</h4>
+        ${topics.map(topic => {
+          const topicData = topicAverages.find(t => t.topic_number === topic.number);
+          const score = topicData ? topicData.avg_score : 0;
+          const pct = (score / 5) * 100;
+          return `
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold">${topic.number}. ${topic.title}</span>
+                <span class="small text-muted">${topic.titleEn}</span>
+              </div>
+              <div class="score-bar-container">
+                <div class="score-bar">
+                  <div class="score-bar-fill" style="width:${pct}%;background:${getScoreColor(score)}"></div>
+                </div>
+                <div class="score-value" style="color:${getScoreColor(score)}">${score.toFixed(2)}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      `;
+
+      // Detailed Subtopic Scores
+      document.getElementById('detailedScores').innerHTML = `
+        <h4 class="fw-bold mb-3"><i class="bi bi-list-check me-2"></i>คะแนนรายหัวข้อย่อย</h4>
+        ${topics.map(topic => `
+          <div class="topic-section">
+            <div class="topic-title">
+              ด้านที่ ${topic.number}: ${topic.title} <span class="text-muted fw-normal">(${topic.titleEn})</span>
+            </div>
+            <table class="table table-sm mb-0">
+              <thead>
+                <tr>
+                  <th style="width:40%">หัวข้อ</th>
+                  <th class="text-center">คะแนนเฉลี่ย</th>
+                  <th class="text-center">ต่ำสุด</th>
+                  <th class="text-center">สูงสุด</th>
+                  <th class="text-center">จำนวนผู้ประเมิน</th>
+                  <th>คะแนนแต่ละคน</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${topic.subTopics.map(sub => {
+                  const subData = averages.find(a => a.topic_number === topic.number && a.sub_topic_number === sub.number);
+                  const rawScores = ratings.filter(r => r.topic_number === topic.number && r.sub_topic_number === sub.number);
+                  return `
+                    <tr>
+                      <td>${sub.title}</td>
+                      <td class="text-center fw-bold" style="color:${getScoreColor(subData?.avg_score || 0)}">
+                        ${subData ? subData.avg_score.toFixed(2) : '-'}
+                      </td>
+                      <td class="text-center">${subData?.min_score || '-'}</td>
+                      <td class="text-center">${subData?.max_score || '-'}</td>
+                      <td class="text-center">${subData?.num_evaluators || 0}</td>
+                      <td>
+                        ${rawScores.map(r => {
+                          const color = getScoreColor(r.score);
+                          return `<span class="raw-score-chip" style="background:${color}20;color:${color}">${r.score}</span>`;
+                        }).join('')}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `).join('')}
+      `;
+
+      // Open-ended Feedback
+      document.getElementById('openendedFeedback').innerHTML = `
+        <h4 class="fw-bold mb-3"><i class="bi bi-chat-quote me-2"></i>ข้อเสนอแนะแบบเปิด (Open-ended Feedback)</h4>
+        ${aspects.map(aspect => {
+          const aspectFeedback = openEnded.filter(oe => oe.aspect_number === aspect.number);
+          if (aspectFeedback.length === 0) return '';
+          return `
+            <div class="topic-section">
+              <div class="topic-title">${aspect.title} <span class="text-muted fw-normal">(${aspect.titleEn})</span></div>
+              ${aspect.questions.map(q => {
+                const answers = aspectFeedback.filter(oe => oe.question_number === q.number && oe.answer && oe.answer.trim());
+                return `
+                  <div class="mb-3">
+                    <div class="feedback-label mb-2">${q.label}: ${q.text}</div>
+                    ${answers.length > 0 
+                      ? answers.map(a => `<div class="feedback-card">"${a.answer}"</div>`).join('')
+                      : '<p class="text-muted small ms-3">- ไม่มีข้อเสนอแนะ -</p>'}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }).join('')}
+      `;
+
+      // Date
+      document.getElementById('reportDate').textContent = 
+        `สร้างเมื่อ: ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    function downloadPDF() {
+      const element = document.getElementById('reportContent');
+      const userName = reportData?.user?.display_name || reportData?.user?.email || 'report';
+      const cycleName = reportData?.cycle?.cycle_name || '';
+      
+      const opt = {
+        margin: [10, 10],
+        filename: `360_Evaluation_${userName}_${cycleName}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(element).save();
+    }
+
+    loadReport();
+  </script>
+</body>
+</html>

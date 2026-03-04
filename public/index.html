@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>360° Executive Evaluation - เข้าสู่ระบบ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-logo">360°</div>
+      <h1>Executive Evaluation</h1>
+      <p class="subtitle">แบบประเมินผู้บริหาร 360 องศา</p>
+
+      <div id="alertBox" class="alert d-none" role="alert"></div>
+
+      <form id="loginForm" autocomplete="off">
+        <div class="mb-3 text-start">
+          <label for="email" class="form-label fw-semibold">อีเมล</label>
+          <input type="email" class="form-control form-control-lg" id="email" placeholder="กรอกอีเมลของท่าน" required>
+        </div>
+        <div class="mb-4 text-start">
+          <label for="password" class="form-label fw-semibold">รหัสผ่าน</label>
+          <input type="password" class="form-control form-control-lg" id="password" placeholder="กรอกรหัสผ่านที่ได้รับ" required>
+        </div>
+        <button type="submit" class="btn btn-primary-custom btn-lg w-100" id="loginBtn">
+          เข้าสู่ระบบ
+        </button>
+      </form>
+
+      <hr class="my-4">
+      <a href="/admin" class="text-muted text-decoration-none small">
+        <small>สำหรับผู้ดูแลระบบ →</small>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const alertBox = document.getElementById('alertBox');
+    const loginBtn = document.getElementById('loginBtn');
+
+    function showAlert(msg, type = 'danger') {
+      alertBox.className = `alert alert-${type}`;
+      alertBox.textContent = msg;
+      alertBox.classList.remove('d-none');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.classList.add('d-none');
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังเข้าสู่ระบบ...';
+
+      try {
+        const res = await fetch('/api/user/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          window.location.href = '/evaluate';
+        } else {
+          showAlert(data.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+        }
+      } catch (err) {
+        showAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = 'เข้าสู่ระบบ';
+      }
+    });
+
+    // Check if already logged in
+    fetch('/api/user/check').then(r => r.json()).then(data => {
+      if (data.loggedIn) window.location.href = '/evaluate';
+    });
+  </script>
+</body>
+</html>

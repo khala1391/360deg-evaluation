@@ -1,0 +1,27 @@
+# render.yaml - Render Blueprint for one-click deploy
+# https://render.com/docs/blueprint-spec
+
+services:
+- type: web
+  name: 360deg-evaluation
+  runtime: node
+  plan: free
+  buildCommand: npm install
+  startCommand: node server.js
+  envVars:
+  - key: SESSION_SECRET
+    generateValue: true
+  - key: ADMIN_EMAIL
+    value: admin@365holding.co.th
+  - key: ADMIN_PASSWORD
+    value: admin360eval
+  - key: SMTP_HOST
+    value: ""
+  - key: SMTP_PORT
+    value: "465"
+  - key: SMTP_SECURE
+    value: "true"
+  - key: SMTP_USER
+    value: ""
+  - key: SMTP_PASS
+    value: ""
