@@ -79,39 +79,25 @@ app.get('/api/admin/check', (req, res) => {
 });
 
 app.get('/api/admin/email-status', requireAdmin, (req, res) => {
-  res.json({ emailEnabled: email.isEmailEnabled() });
+  res.json(email.getProviderInfo());
 });
 
-// SMTP connection verify — ทดสอบว่า connect ได้หรือไม่
+// ทดสอบการเชื่อมต่อระบบอีเมล
 app.post('/api/admin/test-smtp', requireAdmin, async (req, res) => {
-  if (!email.isEmailEnabled()) {
+  const info = email.getProviderInfo();
+  if (!info.enabled) {
     return res.json({
       success: false,
-      error: 'SMTP ยังไม่ได้ตั้งค่า (SMTP_HOST / SMTP_USER / SMTP_PASS ว่าง)',
-      config: {
-        host: process.env.SMTP_HOST || '(not set)',
-        port: process.env.SMTP_PORT || '465',
-        secure: process.env.SMTP_SECURE !== 'false' ? 'true (SSL)' : 'false (STARTTLS)',
-        user: process.env.SMTP_USER ? '***configured***' : '(not set)'
-      }
+      error: 'ยังไม่ได้ตั้งค่าระบบส่งอีเมล – แนะนำใช้ Brevo HTTP API (ฟรี 300 อีเมล/วัน)',
+      provider: 'none'
     });
   }
   try {
-    const info = await email.verifyConnection();
-    res.json({ success: true, message: 'SMTP connection OK ✅', info });
+    const result = await email.verifyConnection();
+    res.json({ success: true, message: `${info.label} เชื่อมต่อสำเร็จ ✅`, provider: info.provider, result });
   } catch (err) {
-    console.error('SMTP verify failed:', err);
-    res.json({
-      success: false,
-      error: err.message,
-      code: err.code,
-      config: {
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT || '465',
-        secure: process.env.SMTP_SECURE !== 'false' ? 'true (SSL)' : 'false (STARTTLS)',
-        user: process.env.SMTP_USER ? '***configured***' : '(not set)'
-      }
-    });
+    console.error('Email verify failed:', err);
+    res.json({ success: false, error: err.message, provider: info.provider });
   }
 });
 

@@ -82,10 +82,56 @@
     .spinner { width: 44px; height: 44px; border: 4px solid #e0e0e0; border-top-color: #1a237e; border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ---- PDF-specific ---- */
+    /* ---- PDF-specific (html2canvas compatibility) ---- */
+    .pdf-mode { overflow: visible !important; }
     .pdf-mode .action-bar { display: none !important; }
-    .pdf-mode .report-wrap { padding: 0; }
-    .pdf-mode .report-page { box-shadow: none; border-radius: 0; padding: 20px 24px; }
+    .pdf-mode .report-wrap {
+      padding: 0 !important; max-width: none !important;
+      width: 794px !important; margin: 0 !important;
+    }
+    .pdf-mode .report-page {
+      box-shadow: none !important; border-radius: 0 !important;
+      padding: 20px 24px !important; width: 100% !important;
+    }
+    /* Force color rendering */
+    .pdf-mode * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    /* Convert flexbox → float for html2canvas */
+    .pdf-mode .bar-row {
+      display: block !important; overflow: hidden !important; margin-bottom: 10px !important;
+    }
+    .pdf-mode .bar-label {
+      float: left !important; width: 46% !important; display: block !important;
+    }
+    .pdf-mode .bar-track {
+      float: left !important; width: 40% !important; display: block !important;
+      margin: 4px 4px 0 4px !important;
+    }
+    .pdf-mode .bar-val {
+      float: right !important; width: 10% !important; display: block !important;
+      text-align: right !important;
+    }
+    .pdf-mode .rpt-meta {
+      display: block !important; text-align: center !important;
+    }
+    .pdf-mode .rpt-meta .badge {
+      display: inline-block !important; margin: 3px !important;
+    }
+    .pdf-mode .score-circle {
+      display: block !important; margin: 0 auto !important;
+      text-align: center !important; line-height: 96px !important;
+    }
+    .pdf-mode .rpt-table {
+      table-layout: fixed !important; width: 100% !important;
+    }
+    /* Page break hints */
+    .pdf-mode .sec-title { page-break-after: avoid !important; }
+    .pdf-mode .topic-block {
+      page-break-inside: avoid !important; break-inside: avoid !important;
+    }
+    .pdf-mode .overall-box { page-break-inside: avoid !important; }
 
     /* ---- Print ---- */
     @media print {
@@ -353,33 +399,47 @@
     }
 
     // ======== PDF download ========
-    function downloadPDF() {
+    async function downloadPDF() {
       const el = document.getElementById('reportContent');
       const userName = reportData?.user?.display_name || reportData?.user?.email || 'report';
       const cycleName = reportData?.cycle?.cycle_name || '';
       const filename = `360_Evaluation_${userName}_${cycleName}.pdf`.replace(/[\/\\?%*:|"<>]/g, '-');
 
-      // add pdf-mode class for cleaner rendering
+      // Switch to PDF mode and scroll to top
       document.body.classList.add('pdf-mode');
+      window.scrollTo(0, 0);
+      // Wait for reflow & font rendering
+      await new Promise(r => setTimeout(r, 500));
 
       const opt = {
-        margin: [8, 6, 8, 6],
+        margin: [10, 8, 10, 8],
         filename,
-        image: { type: 'jpeg', quality: 0.95 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
           scale: 2,
           useCORS: true,
           letterRendering: true,
           logging: false,
-          windowWidth: 794 // A4 width at 96dpi
+          width: 794,
+          windowWidth: 794,
+          scrollX: 0,
+          scrollY: 0
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'], avoid: '.topic-block' }
+        pagebreak: {
+          mode: ['css', 'legacy'],
+          avoid: ['.topic-block', '.overall-box', '.rpt-header']
+        }
       };
 
-      html2pdf().set(opt).from(el).save().then(() => {
+      try {
+        await html2pdf().set(opt).from(el).save();
+      } catch (err) {
+        console.error('PDF generation failed:', err);
+        alert('ไม่สามารถสร้าง PDF ได้ กรุณาใช้ปุ่ม "พิมพ์" แทน');
+      } finally {
         document.body.classList.remove('pdf-mode');
-      });
+      }
     }
 
     loadReport();

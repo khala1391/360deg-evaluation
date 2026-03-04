@@ -290,13 +290,16 @@
         const res = await fetch('/api/admin/email-status');
         const data = await res.json();
         const banner = document.getElementById('emailBanner');
-        if (!data.emailEnabled) {
+        if (!data.enabled) {
           banner.className = 'alert alert-warning mb-4';
-          banner.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i><strong>SMTP ยังไม่ได้ตั้งค่า</strong> – ระบบส่งอีเมลถูกปิดอยู่ ดูรหัสผ่านได้ที่แท็บ "จัดการผู้ใช้" หากต้องการเปิดใช้อีเมล ให้ตั้งค่า SMTP ใน Environment Variables ของ Render';
+          banner.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>ระบบส่งอีเมลยังไม่ได้ตั้งค่า</strong> – ดูรหัสผ่านได้ที่แท็บ "จัดการผู้ใช้"<br>
+            <small class="text-muted">แนะนำ: สมัคร <a href="https://brevo.com" target="_blank">Brevo</a> (ฟรี 300 อีเมล/วัน) แล้วตั้ง Environment Variables:<br>
+            <code>EMAIL_PROVIDER=brevo</code> &nbsp; <code>BREVO_API_KEY=xkeysib-xxx</code> &nbsp; <code>EMAIL_FROM=your@email.com</code></small>`;
         } else {
           banner.className = 'alert alert-success mb-4';
-          banner.innerHTML = '<i class="bi bi-check-circle me-2"></i>ระบบส่งอีเมลพร้อมใช้งาน';
-          setTimeout(() => banner.classList.add('d-none'), 3000);
+          banner.innerHTML = `<i class="bi bi-check-circle me-2"></i>ระบบส่งอีเมลพร้อมใช้งาน (${data.label})`;
+          setTimeout(() => banner.classList.add('d-none'), 5000);
         }
       } catch {}
     }
