@@ -271,8 +271,10 @@
                 <textarea class="form-control question-textarea" 
                           data-aspect="${aspect.number}" 
                           data-question="${q.number}"
-                          placeholder="กรอกความเห็นของท่าน..."
+                          placeholder="กรุณากรอกความเห็น (จำเป็น)"
+                          required
                           oninput="setOpenEnded(${aspect.number}, ${q.number}, this.value)"></textarea>
+                <div class="invalid-feedback">กรุณากรอกความเห็นในข้อนี้</div>
               </div>
             `).join('')}
           </div>
@@ -362,8 +364,13 @@
       let totalRatings = 0;
       topics.forEach(t => t.subTopics.forEach(() => totalRatings++));
       const filledRatings = Object.keys(data.ratings).length;
-      
-      return filledRatings >= totalRatings;
+      if (filledRatings < totalRatings) return false;
+
+      // Check all open-ended are filled
+      let totalOpenEnded = 0;
+      aspects.forEach(a => a.questions.forEach(() => totalOpenEnded++));
+      const filledOpenEnded = Object.values(data.openended).filter(v => v && v.trim()).length;
+      return filledOpenEnded >= totalOpenEnded;
     }
 
     function checkAllComplete() {
@@ -411,18 +418,16 @@
           });
         });
 
-        // Open-ended
+        // Open-ended (all required)
         Object.entries(data.openended).forEach(([key, answer]) => {
-          if (answer && answer.trim()) {
-            const [aspectNum, questionNum] = key.split('_').map(Number);
-            evaluations.push({
-              type: 'openended',
-              evaluateeId: ev.id,
-              aspectNumber: aspectNum,
-              questionNumber: questionNum,
-              answer: answer.trim()
-            });
-          }
+          const [aspectNum, questionNum] = key.split('_').map(Number);
+          evaluations.push({
+            type: 'openended',
+            evaluateeId: ev.id,
+            aspectNumber: aspectNum,
+            questionNumber: questionNum,
+            answer: (answer || '').trim()
+          });
         });
       });
 

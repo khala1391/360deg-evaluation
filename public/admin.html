@@ -129,13 +129,22 @@
                   <i class="bi bi-person-plus me-2"></i>เพิ่มผู้ประเมิน
                 </div>
                 <div class="card-body p-4">
+                  <!-- CSV Upload -->
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold"><i class="bi bi-filetype-csv me-1"></i>นำเข้าจากไฟล์ CSV</label>
+                    <input type="file" class="form-control" id="csvFile" accept=".csv,.txt">
+                    <div class="form-text">ไฟล์ CSV: แต่ละบรรทัดเป็น <code>ชื่อ,อีเมล</code> เช่น <code>Mr.A,a@company.com</code></div>
+                  </div>
+                  <button class="btn btn-outline-secondary w-100 mb-3" onclick="importCSV()">
+                    <i class="bi bi-upload me-1"></i>นำเข้า CSV
+                  </button>
+                  <hr>
+                  <!-- Manual Input -->
                   <form id="addUsersForm">
                     <div class="mb-3">
-                      <label class="form-label fw-semibold">อีเมลผู้ประเมิน</label>
-                      <textarea class="form-control" id="userEmails" rows="6" placeholder="กรอกอีเมล 1 รายการต่อบรรทัด&#10;เช่น:&#10;khala1391@hotmail.com&#10;khala1391@gmail.com&#10;vmcar1391@gmail.com">khala1391@hotmail.com
-khala1391@gmail.com
-vmcar1391@gmail.com</textarea>
-                      <div class="form-text">กรอกอีเมล 1 รายการต่อ 1 บรรทัด</div>
+                      <label class="form-label fw-semibold"><i class="bi bi-keyboard me-1"></i>กรอกข้อมูลเอง</label>
+                      <textarea class="form-control" id="userEntries" rows="6" placeholder="กรอก ชื่อ,อีเมล 1 รายการต่อบรรทัด&#10;เช่น:&#10;คุณ A,khala1391@hotmail.com&#10;Mr.B,khala1391@gmail.com&#10;คุณ C,vmcar1391@gmail.com&#10;&#10;หรือกรอกแค่อีเมล:&#10;someone@gmail.com"></textarea>
+                      <div class="form-text">กรอก <code>ชื่อ,อีเมล</code> หรือ <code>อีเมล</code> อย่างเดียวก็ได้ (1 บรรทัดต่อ 1 คน)</div>
                     </div>
                     <button type="submit" class="btn btn-primary-custom w-100 mb-2">
                       <i class="bi bi-person-plus me-1"></i>เพิ่มผู้ประเมิน
@@ -167,6 +176,7 @@ vmcar1391@gmail.com</textarea>
                       <thead>
                         <tr>
                           <th>#</th>
+                          <th>ชื่อที่แสดง</th>
                           <th>อีเมล</th>
                           <th>รหัสผ่าน</th>
                           <th>สถานะ</th>
@@ -174,7 +184,7 @@ vmcar1391@gmail.com</textarea>
                         </tr>
                       </thead>
                       <tbody id="usersTable">
-                        <tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -417,14 +427,27 @@ vmcar1391@gmail.com</textarea>
       const tbody = document.getElementById('usersTable');
       
       if (!data.users || data.users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">ยังไม่มีผู้ประเมิน</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีผู้ประเมิน</td></tr>';
         return;
       }
 
       tbody.innerHTML = data.users.map((u, i) => `
         <tr>
           <td>${i + 1}</td>
-          <td><strong>${u.email}</strong></td>
+          <td>
+            <span id="nameDisplay${u.id}" ondblclick="editName(${u.id})" style="cursor:pointer" title="ดับเบิลคลิกเพื่อแก้ไข">
+              <strong>${u.display_name || '<span class="text-muted">ยังไม่ตั้งชื่อ</span>'}</strong>
+              <i class="bi bi-pencil text-muted ms-1" style="font-size:0.75rem"></i>
+            </span>
+            <div id="nameEdit${u.id}" class="d-none">
+              <div class="input-group input-group-sm">
+                <input type="text" class="form-control" id="nameInput${u.id}" value="${u.display_name || ''}" placeholder="กรอกชื่อ">
+                <button class="btn btn-success btn-sm" onclick="saveName(${u.id})"><i class="bi bi-check"></i></button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="cancelEditName(${u.id})"><i class="bi bi-x"></i></button>
+              </div>
+            </div>
+          </td>
+          <td>${u.email}</td>
           <td><code>${u.password}</code></td>
           <td>${u.has_submitted 
             ? '<span class="badge-submitted"><i class="bi bi-check-circle me-1"></i>ประเมินแล้ว</span>' 
@@ -446,18 +469,60 @@ vmcar1391@gmail.com</textarea>
       `).join('');
     }
 
+    function editName(userId) {
+      document.getElementById('nameDisplay' + userId).classList.add('d-none');
+      document.getElementById('nameEdit' + userId).classList.remove('d-none');
+      document.getElementById('nameInput' + userId).focus();
+    }
+    function cancelEditName(userId) {
+      document.getElementById('nameDisplay' + userId).classList.remove('d-none');
+      document.getElementById('nameEdit' + userId).classList.add('d-none');
+    }
+    async function saveName(userId) {
+      const name = document.getElementById('nameInput' + userId).value.trim();
+      try {
+        const res = await fetch(`/api/admin/users/${userId}/name`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: name })
+        });
+        if (res.ok) {
+          showToast('บันทึกชื่อสำเร็จ');
+          loadUsers();
+        } else {
+          showToast('เกิดข้อผิดพลาด', 'danger');
+        }
+      } catch { showToast('เกิดข้อผิดพลาด', 'danger'); }
+    }
+
+    // Parse "name,email" or just "email" from each line
+    function parseUserEntries(text) {
+      return text.split('\n').map(line => line.trim()).filter(line => line && !line.startsWith('#')).map(line => {
+        // handle CSV: name,email or email
+        const parts = line.split(',').map(s => s.trim());
+        if (parts.length >= 2 && parts[parts.length - 1].includes('@')) {
+          return { name: parts.slice(0, -1).join(',').trim(), email: parts[parts.length - 1] };
+        }
+        // single email
+        if (line.includes('@')) {
+          return { name: '', email: line.trim() };
+        }
+        return null;
+      }).filter(Boolean);
+    }
+
     document.getElementById('addUsersForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const emailsText = document.getElementById('userEmails').value;
-      const emails = emailsText.split('\n').map(e => e.trim()).filter(e => e);
+      const text = document.getElementById('userEntries').value;
+      const users = parseUserEntries(text);
       
-      if (emails.length === 0) return showToast('กรุณากรอกอีเมล', 'warning');
+      if (users.length === 0) return showToast('กรุณากรอกข้อมูลให้ถูกต้อง', 'warning');
 
       try {
         const res = await fetch('/api/admin/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ emails })
+          body: JSON.stringify({ users })
         });
         const data = await res.json();
         if (res.ok) {
@@ -467,11 +532,31 @@ vmcar1391@gmail.com</textarea>
           if (existing > 0) msg += ` (${existing} คนมีอยู่แล้ว)`;
           showToast(msg);
           loadUsers();
+          loadProgress();
         } else {
           showToast(data.error, 'danger');
         }
       } catch { showToast('เกิดข้อผิดพลาด', 'danger'); }
     });
+
+    function importCSV() {
+      const fileInput = document.getElementById('csvFile');
+      if (!fileInput.files || !fileInput.files[0]) {
+        showToast('กรุณาเลือกไฟล์ CSV ก่อน', 'warning');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const textarea = document.getElementById('userEntries');
+        // Append to existing content
+        const existing = textarea.value.trim();
+        textarea.value = existing ? existing + '\n' + text.trim() : text.trim();
+        showToast('นำเข้า CSV สำเร็จ กด"เพิ่มผู้ประเมิน"เพื่อบันทึก');
+        fileInput.value = '';
+      };
+      reader.readAsText(fileInput.files[0]);
+    }
 
     async function sendAllPasswords() {
       if (!confirm('ต้องการส่งรหัสผ่านไปยังผู้ประเมินทุกคนทางอีเมลใช่หรือไม่?')) return;

@@ -23,9 +23,12 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'default-secret-change-me',
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
     maxAge: 4 * 60 * 60 * 1000, // 4 hours
-    secure: false // set true if using HTTPS only
+    secure: 'auto',
+    httpOnly: true,
+    sameSite: 'lax'
   }
 }));
 
@@ -158,18 +161,20 @@ app.put('/api/admin/cycles/:id', requireAdmin, (req, res) => {
 // ========================
 
 app.post('/api/admin/users', requireAdmin, async (req, res) => {
-  const { emails } = req.body;
+  const { users: userList } = req.body;
   const cycle = db.getActiveCycle();
   if (!cycle) return res.status(400).json({ error: 'กรุณาสร้างรอบการประเมินก่อน' });
 
   const results = [];
-  for (const emailAddr of emails) {
-    if (!emailAddr || !emailAddr.trim()) continue;
-    const user = db.addUser(emailAddr.trim(), cycle.id);
+  for (const entry of userList) {
+    const emailAddr = (entry.email || '').trim();
+    const displayName = (entry.name || '').trim();
+    if (!emailAddr) continue;
+    const user = db.addUser(emailAddr, cycle.id, displayName);
     if (user) {
       results.push(user);
     } else {
-      results.push({ email: emailAddr.trim(), error: 'มีอยู่ในระบบแล้ว' });
+      results.push({ email: emailAddr, error: 'มีอยู่ในระบบแล้ว' });
     }
   }
   res.json({ success: true, results });
@@ -180,6 +185,12 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
   if (!cycle) return res.json({ users: [], cycle: null });
   const users = db.getUsersByCycle(cycle.id);
   res.json({ users, cycle });
+});
+
+app.put('/api/admin/users/:id/name', requireAdmin, (req, res) => {
+  const { displayName } = req.body;
+  db.updateUserDisplayName(parseInt(req.params.id), displayName || '');
+  res.json({ success: true });
 });
 
 app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {

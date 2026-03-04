@@ -178,6 +178,11 @@ function resetUserPassword(userId) {
   return { ...user, password };
 }
 
+function updateUserDisplayName(userId, displayName) {
+  const db = getDb();
+  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, userId);
+}
+
 // ========================
 // Evaluation Data
 // ========================
@@ -306,6 +311,7 @@ module.exports = {
   markUserSubmitted,
   deleteUser,
   resetUserPassword,
+  updateUserDisplayName,
   // Evaluations
   saveRatingEvaluation,
   saveOpenEndedEvaluation,
